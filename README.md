@@ -434,7 +434,7 @@ All settings are environment variables. See `.env.example` for defaults.
 - **GPU inference pipeline:** Add CUDA support and TensorRT optimisation for sub-second processing on A4 documents.
 - **Streaming response:** Return OCR results per-page using FastAPI's `StreamingResponse` to reduce time-to-first-byte on large documents.
 - **Persistent storage backend:** Replace the in-memory store with a PostgreSQL store using SQLAlchemy and Alembic migrations.
-- **Confidence calibration:** Apply Platt scaling or isotonic regression to calibrate the heuristic confidence scores against held-out ground truth.
+- **Confidence calibration:** Apply Platt scaling or isotonic regression to calibrate the heuristic confidence scores against held-out the ground truth.
 
 ---
 
