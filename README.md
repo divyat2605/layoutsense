@@ -451,4 +451,4 @@ All settings are environment variables. See `.env.example` for defaults.
 ---
 
 ## License
-
+Apache License Version 2.0
