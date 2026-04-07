@@ -1,4 +1,4 @@
-# DocuParse
+# LayoutSense
 
 **Layout-aware document intelligence API implementing a PP-OCR-inspired 3-stage pipeline with LayoutLM-style spatial reasoning.**
 
@@ -10,7 +10,7 @@
 
 ## Project Overview
 
-DocuParse is a production-grade document intelligence API that goes beyond commodity OCR. Rather than calling a recognition library as a monolithic black box, it implements the **three-stage pipeline** described in PP-OCR (Du et al., 2020) as discrete, inspectable stages — text detection, direction classification, and text recognition — and then applies a **LayoutLM-inspired post-processing layer** (Xu et al., 2020) that uses bounding box coordinates as first-class features to reconstruct document structure.
+LayoutSense is a production-grade document intelligence API that goes beyond commodity OCR. Rather than calling a recognition library as a monolithic black box, it implements the **three-stage pipeline** described in PP-OCR (Du et al., 2020) as discrete, inspectable stages — text detection, direction classification, and text recognition — and then applies a **LayoutLM-inspired post-processing layer** (Xu et al., 2020) that uses bounding box coordinates as first-class features to reconstruct document structure.
 
 The result is an API that returns not just raw strings, but semantically labelled regions — headings, paragraphs, tables, figures — positioned in reading order, with the spatial metadata preserved for downstream NLP or document understanding tasks.
 
@@ -53,7 +53,7 @@ The DBSCAN step is particularly important: it replaces the implicit assumption o
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                          DocuParse API                                  │
+│                          LayoutSense API                                │
 │                      (FastAPI + Uvicorn)                                │
 └───────────────────┬─────────────────────────────────────────────────────┘
                     │
@@ -150,8 +150,8 @@ The DBSCAN step is particularly important: it replaces the implicit assumption o
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourname/docuparse.git
-cd docuparse
+git clone https://github.com/yourname/layoutsense.git
+cd layoutsense
 
 # 2. Copy and review environment config
 cp .env.example .env
@@ -409,7 +409,7 @@ All settings are environment variables. See `.env.example` for defaults.
 
 ## Resume Project Description
 
-> **DocuParse** — Implemented a production REST API for layout-aware document intelligence, directly translating the PP-OCR three-stage pipeline (Du et al., 2020) — differentiable binarization detection, MobileNetV3 direction classification, and SVTR_LCNet text recognition — into separable, instrumented service layers, then applied LayoutLM-inspired (Xu et al., 2020) spatial reasoning via DBSCAN bounding-box clustering to classify document regions (headings, paragraphs, tables, figures) in reading order; containerised with Docker Compose and exposed via a FastAPI REST API with Redis caching, Pydantic v2 schemas, and a full pytest suite covering both unit and integration tests.
+> **LayoutSense** — Implemented a production REST API for layout-aware document intelligence, directly translating the PP-OCR three-stage pipeline (Du et al., 2020) — differentiable binarization detection, MobileNetV3 direction classification, and SVTR_LCNet text recognition — into separable, instrumented service layers, then applied LayoutLM-inspired (Xu et al., 2020) spatial reasoning via DBSCAN bounding-box clustering to classify document regions (headings, paragraphs, tables, figures) in reading order; containerised with Docker Compose and exposed via a FastAPI REST API with Redis caching, Pydantic v2 schemas, and a full pytest suite covering both unit and integration tests.
 
 ---
 
@@ -434,7 +434,7 @@ All settings are environment variables. See `.env.example` for defaults.
 - **GPU inference pipeline:** Add CUDA support and TensorRT optimisation for sub-second processing on A4 documents.
 - **Streaming response:** Return OCR results per-page using FastAPI's `StreamingResponse` to reduce time-to-first-byte on large documents.
 - **Persistent storage backend:** Replace the in-memory store with a PostgreSQL store using SQLAlchemy and Alembic migrations.
-- **Confidence calibration:** Apply Platt scaling or isotonic regression to calibrate the heuristic confidence scores against held-out the ground truth.
+- **Confidence calibration:** Apply Platt scaling or isotonic regression to calibrate the heuristic confidence scores against held-out ground truth.
 
 ---
 
@@ -451,4 +451,5 @@ All settings are environment variables. See `.env.example` for defaults.
 ---
 
 ## License
-Apache License Version 2.0
+
+Apache License 2.0
