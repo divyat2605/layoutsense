@@ -1,0 +1,95 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DocuParse — Docker Compose
+#
+# Services:
+#   api    — FastAPI application (the core DocuParse service)
+#   redis  — Optional result cache (set REDIS_ENABLED=true to activate)
+#
+# Usage:
+#   docker compose up --build           # Full stack with Redis
+#   docker compose up api               # API only (no caching)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── DocuParse API ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: docuparse:latest
+    container_name: docuparse_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # ── Service config ────────────────────────────────────────────────
+      LOG_LEVEL: "INFO"
+      DEBUG: "false"
+      MAX_UPLOAD_SIZE_MB: "50"
+
+      # ── OCR pipeline ──────────────────────────────────────────────────
+      OCR_USE_GPU: "false"            # Set to "true" if NVIDIA GPU available
+      OCR_LANG: "en"
+      OCR_USE_ANGLE_CLS: "true"
+      OCR_DET_DB_THRESH: "0.3"
+      OCR_DET_DB_BOX_THRESH: "0.5"
+      OCR_DET_DB_UNCLIP_RATIO: "1.6"
+
+      # ── Layout analysis ───────────────────────────────────────────────
+      DBSCAN_EPS_Y: "15.0"
+      DBSCAN_EPS_X: "50.0"
+      HEADING_HEIGHT_RATIO: "1.4"
+
+      # ── Redis cache ───────────────────────────────────────────────────
+      REDIS_ENABLED: "true"
+      REDIS_URL: "redis://redis:6379/0"
+      CACHE_TTL_SECONDS: "3600"
+    volumes:
+      # Persist PaddleOCR model weights between container restarts
+      - paddleocr_models:/home/docuparse/.paddleocr
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s   # PaddleOCR model download on first start
+    networks:
+      - docuparse_net
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: docuparse_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""                   # Disable persistence for ephemeral cache
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - docuparse_net
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  paddleocr_models:
+    driver: local
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  docuparse_net:
+    driver: bridge

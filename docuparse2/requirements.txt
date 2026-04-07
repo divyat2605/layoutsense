@@ -1,0 +1,50 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi==0.111.1
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+
+# ── Configuration & validation ────────────────────────────────────────────────
+pydantic==2.7.4
+pydantic-settings==2.3.4
+
+# ── OCR backbone ──────────────────────────────────────────────────────────────
+paddlepaddle==2.6.1
+paddleocr==2.8.1
+
+# ── Document ingestion ────────────────────────────────────────────────────────
+pdf2image==1.17.0
+Pillow==10.4.0
+
+# ── Layout analysis ───────────────────────────────────────────────────────────
+scikit-learn==1.5.1
+numpy==1.26.4
+
+# ── Trained layout classifier (Part 1) ───────────────────────────────────────
+lightgbm==4.4.0
+datasets==2.20.0                 # DocBank / PubLayNet download
+optuna==3.6.1                    # Hyperparameter tuning (optional)
+
+# ── LayoutLMv3 (Part 2) ──────────────────────────────────────────────────────
+transformers==4.42.4
+torch==2.3.1                     # CPU build; use torch+cu121 for CUDA
+sentencepiece==0.2.0
+Pillow==10.4.0
+
+# ── Database — Supabase / PostgreSQL (Part 4) ─────────────────────────────────
+sqlalchemy[asyncio]==2.0.31
+asyncpg==0.29.0                  # Async PostgreSQL driver
+alembic==1.13.2
+psycopg2-binary==2.9.9           # Alembic uses sync driver for migrations
+
+# ── Caching ───────────────────────────────────────────────────────────────────
+redis[asyncio]==5.0.7
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.2.2
+pytest-asyncio==0.23.7
+httpx==0.27.0
+
+# ── Development utilities ─────────────────────────────────────────────────────
+python-dotenv==1.0.1
+ruff==0.5.1
+mypy==1.10.1
