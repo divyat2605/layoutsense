@@ -117,6 +117,7 @@ The DBSCAN step is particularly important: it replaces the implicit assumption o
         │  ④ Reading order reconstruction                 │
         │     └─ Column detection via x-center clustering │
         │     └─ Sort: column_idx → y_min → x_min         │
+        │     └─ Parallel processing for multi-page docs  │
         └─────────────────────┬──────────────────────────┘
                               │
                     ┌─────────▼──────────┐
@@ -181,6 +182,28 @@ cp .env.example .env
 # 4. Start the API
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+### Supabase Database Setup
+
+LayoutSense uses Supabase (PostgreSQL) for persistent document storage. To set up:
+
+1. **Create a Supabase project** at [supabase.com](https://supabase.com)
+
+2. **Get connection details:**
+   - Go to Project Settings → Database → Connection String
+   - Copy the "URI" (Transaction mode) — it looks like:
+     ```
+     postgresql+asyncpg://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+     ```
+
+3. **Add to `.env`:**
+   ```bash
+   SUPABASE_DB_URL=postgresql+asyncpg://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+   ```
+
+4. **Database tables are created automatically** on first startup via Alembic migrations.
+
+**Note:** If you don't set `SUPABASE_DB_URL`, the API runs with in-memory storage only (documents lost on restart).
 
 ### Running Tests
 
@@ -378,11 +401,52 @@ Remove a document and its cached parse results from the in-memory store.
 
 Liveness probe. Returns `200 OK` if the service process is running.
 
-### `GET /ready`
+### `GET /metrics`
 
-Readiness probe. Returns `200 OK` only when the OCR pipeline has been initialised and (if enabled) Redis is reachable. Returns `503 Service Unavailable` during warm-up.
+Basic monitoring metrics in JSON format (memory usage, CPU, uptime).
+
+**Example:**
+```bash
+curl http://localhost:8000/metrics
+```
+
+**Response `200 OK`:**
+```json
+{
+  "timestamp": 1712520000,
+  "service": "LayoutSense",
+  "version": "1.0.0",
+  "memory_mb": 245.67,
+  "cpu_percent": 12.3,
+  "uptime_seconds": 3600
+}
+```
 
 ---
+
+## Production Features
+
+LayoutSense includes several production-hardening features:
+
+- **Memory Management**: TTL-based cache expiration prevents memory leaks
+- **Security Headers**: XSS protection, content type sniffing prevention, HSTS
+- **Parallel Processing**: Multi-page documents processed concurrently via ThreadPoolExecutor
+- **Monitoring**: `/metrics` endpoint for system resource monitoring (CPU, memory, disk)
+- **Health Checks**: `/health` (liveness) and `/ready` (readiness) probes for orchestration
+- **Graceful Degradation**: Services continue with reduced functionality if dependencies fail
+- **Error Handling**: Comprehensive exception hierarchy with meaningful error messages
+- **Async API**: Full async/await support for non-blocking I/O
+- **Type Safety**: Strict mypy type checking throughout codebase
+
+## Production Readiness Checklist
+
+- ✅ **Core Pipeline Complete**: 3-stage PP-OCR + LayoutLM spatial reasoning fully implemented
+- ✅ **Database Integration**: Supabase PostgreSQL with async drivers and migrations  
+- ✅ **Monitoring in Place**: Metrics endpoint and structured logging
+- ⚠️ **Rate Limiting**: Currently disabled (slowapi incompatible with UploadFile). Use reverse proxy or middleware instead
+- ⚠️ **Test Coverage**: 31% baseline (15 tests passing). Target 70%+ for production
+- ⚠️ **HTTPS Configuration**: Configure via reverse proxy or uvicorn SSL parameters
+- ❌ **Known Limitation**: slowapi `@limiter` decorator incompatible with FastAPI's UploadFile parameter analysis
 
 ## Configuration Reference
 

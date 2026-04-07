@@ -42,8 +42,8 @@ lint:  ## Run ruff linter
 format:  ## Format code with ruff
 	ruff format app/ tests/
 
-typecheck:  ## Run mypy type checker
-	mypy app/ --ignore-missing-imports
+typecheck:  ## Run mypy type checker (strict mode)
+	mypy app/ --strict --ignore-missing-imports
 
 ## ── Cleanup ───────────────────────────────────────────────────────────────────
 clean:  ## Remove Python caches and coverage artifacts

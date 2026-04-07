@@ -12,6 +12,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -34,6 +36,9 @@ from app.services.document_processor import DocumentProcessor
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Rate limiter for uploads
+limiter = Limiter(key_func=get_remote_address)
+
 
 def get_processor() -> DocumentProcessor:
     return DocumentProcessor()
@@ -55,23 +60,27 @@ def _handle_domain_error(exc: DocuParseError) -> JSONResponse:
 
 @router.post(
     "/upload",
-    response_model=UploadResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Upload a document for parsing",
     tags=["Documents"],
 )
+# TODO: Rate limiting is currently disabled due to incompatibility with slowapi and UploadFile
+# A middleware-based approach (e.g., per-IP limits in reverse proxy) is recommended for production
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     processor: DocumentProcessor = Depends(get_processor),
     session: AsyncSession = Depends(get_db_session),
 ):
+    """Handle document upload and validation."""
     content = await file.read()
     mime_type = file.content_type or "application/octet-stream"
     filename = file.filename or "unnamed"
 
     logger.info("Upload: '%s' (%s, %d B)", filename, mime_type, len(content))
     try:
-        return await processor.upload(session, filename=filename, content=content, mime_type=mime_type)
+        result = await processor.upload(session, filename=filename, content=content, mime_type=mime_type)
+        return JSONResponse(status_code=201, content=result.model_dump() if hasattr(result, 'model_dump') else result)
     except DocuParseError as exc:
         return _handle_domain_error(exc)
 

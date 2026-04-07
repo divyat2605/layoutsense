@@ -1,5 +1,5 @@
 """
-DocuParse — Layout-Aware Document Intelligence API
+LayoutSense — Layout-Aware Document Intelligence API
 ===================================================
 A 3-stage OCR pipeline inspired by PP-OCR (Du et al., 2020) with
 LayoutLM-style spatial reasoning for document structure reconstruction.
@@ -13,6 +13,10 @@ import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.routes import router
 from app.core.config import settings
@@ -25,7 +29,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application startup and shutdown lifecycle."""
-    logger.info("DocuParse starting up...")
+    logger.info("LayoutSense starting up...")
 
     # Initialise Supabase database tables
     if settings.SUPABASE_DB_URL:
@@ -67,13 +71,13 @@ async def lifespan(app: FastAPI):
     yield  # Application running
 
     # Graceful shutdown
-    logger.info("DocuParse shutting down...")
+    logger.info("LayoutSense shutting down...")
     if getattr(app.state, "redis", None):
         await app.state.redis.aclose()
 
 
 app = FastAPI(
-    title="DocuParse",
+    title="LayoutSense",
     description=(
         "Layout-aware document intelligence API implementing a PP-OCR-inspired "
         "3-stage pipeline with LayoutLM-style spatial clustering for document "
@@ -85,6 +89,13 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Add rate limiting middleware
+# NOTE: Rate limiting is currently disabled due to incompatibility with slowapi and UploadFile
+# A middleware-based approach (e.g., per-IP limits in reverse proxy) is recommended for production
+# app.state.limiter = limiter
+# app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# app.add_middleware(SlowAPIMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -92,6 +103,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Add security headers to all responses."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 @app.middleware("http")
@@ -119,7 +141,7 @@ app.include_router(router, prefix="/api/v1")
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Liveness probe — confirms the service is reachable."""
-    return {"status": "healthy", "service": "DocuParse", "version": "1.0.0"}
+    return {"status": "healthy", "service": "LayoutSense", "version": "1.0.0"}
 
 
 @app.get("/ready", tags=["Health"])
@@ -148,3 +170,22 @@ async def readiness_check(request: Request):
         status_code=200 if all_critical_ready else 503,
         content={"status": "ready" if all_critical_ready else "degraded", "checks": checks},
     )
+
+
+@app.get("/metrics", tags=["Monitoring"])
+async def metrics():
+    """Basic metrics for monitoring (JSON format)."""
+    import psutil
+    import time
+    
+    process = psutil.Process()
+    memory_mb = process.memory_info().rss / 1024 / 1024
+    
+    return {
+        "timestamp": int(time.time()),
+        "service": "LayoutSense",
+        "version": "1.0.0",
+        "memory_mb": round(memory_mb, 2),
+        "cpu_percent": process.cpu_percent(),
+        "uptime_seconds": int(time.time() - process.create_time()),
+    }
